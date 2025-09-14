@@ -9,7 +9,13 @@
 
 An intelligent, web-based timetable generation system that uses **Genetic Algorithms** to create optimal class schedules while handling complex constraints like teacher availability, room conflicts, and institutional requirements.
 
-![AI Timetable Generator Demo](https://via.placeholder.com/800x400/667eea/ffffff?text=AI+Timetable+Generator)
+## 🎥 Live Demo Preview
+
+### Video Demonstration
+[![Project Demo](https://img.shields.io/badge/📹_Watch_Demo-Click_Here-blue?style=for-the-badge)](https://github.com/iampiyushchouhan/TimeTableAgent/blob/main/Project%20Deploy%20Preview.mp4)
+
+**[📺 View Full Demo Video](https://github.com/iampiyushchouhan/TimeTableAgent/blob/main/Project%20Deploy%20Preview.mp4)**
+> **💡 Tip:** Download the video file to view it locally if GitHub's web player doesn't work optimally in your browser.
 
 ## ✨ Features
 
