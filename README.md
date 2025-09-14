@@ -17,6 +17,13 @@ An intelligent, web-based timetable generation system that uses **Genetic Algori
 **[📺 View Full Demo Video](https://github.com/iampiyushchouhan/TimeTableAgent/blob/main/Project%20Deploy%20Preview.mp4)**
 > **💡 Tip:** Download the video file to view it locally if GitHub's web player doesn't work optimally in your browser.
 
+## 🚀 Live Demo
+
+Check out the deployed version of this project here:  
+**👉 [TimeTableAgent GitHub Page](https://iampiyushchouhan.github.io/TimeTableAgent/)**
+
+---
+
 ## ✨ Features
 
 ### 🧠 **AI-Powered Scheduling**
@@ -465,7 +472,29 @@ furnished to do so, subject to the following conditions:
 The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.
 ```
+---
 
+<div align="center">
+
+<h3>👤 Author</h3>
+
+<a href="https://github.com/iampiyushchouhan">
+  <img src="https://github.com/iampiyushchouhan.png" alt="Piyush's Profile" width="120" style="border-radius: 50%;"/>
+</a>
+
+<p><strong>Piyush Chouhan</strong></p>
+<h3>🆘 Need Help?</h3>
+
+<a href="https://github.com/iampiyushchouhan/TimeTableAgent/issues">
+  <img src="https://img.shields.io/badge/GitHub-Issues-red?style=for-the-badge&logo=github" alt="GitHub Issues"/>
+</a>
+<a href="https://www.linkedin.com/in/iampiyushchouhan/">
+  <img src="https://img.shields.io/badge/LinkedIn-Profile-blue?style=for-the-badge&logo=linkedin" alt="LinkedIn Profile"/>
+</a>
+
+<p><strong>Response Time: Usually within 24 hours ⚡</strong></p>
+
+</div>
 
 **Made with ❤️ for educational institutions worldwide**
 
