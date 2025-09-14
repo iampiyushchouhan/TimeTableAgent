@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timetable Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .wizard-step {
+            display: none;
+        }
+        .wizard-step.active {
+            display: block;
+        }
+        .timetable-grid-container {
+            overflow-x: auto;
+        }
+        .timetable-grid {
+            min-width: 1000px;
+            display: grid;
+            border-collapse: collapse;
+            border-spacing: 0;
+            border: 1px solid #e5e7eb;
+        }
+        .timetable-grid th, .timetable-grid td {
+            border: 1px solid #e5e7eb;
+            padding: 8px;
+            text-align: center;
+            font-size: 0.875rem;
+        }
+        .timetable-cell {
+            height: 120px;
+            cursor: pointer;
+            background-color: #f9fafb;
+            transition: background-color 0.2s;
+        }
+        .timetable-cell:hover {
+            background-color: #f3f4f6;
+        }
+        .timetable-cell-filled {
+            background-color: #d1fae5;
+            cursor: default;
+        }
+        .timetable-cell-filled:hover {
+            background-color: #d1fae5;
+        }
+        .lunch-cell {
+            background-color: #e5e7eb;
+            font-weight: bold;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal {
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none;
+        }
+        .modal.active {
+            display: flex;
+        }
+        /* Custom styles for smaller fonts on timetable to fit content */
+        .timetable-grid .text-xs { font-size: 0.7rem; }
+        .timetable-grid .text-xxs { font-size: 0.6rem; }
+    </style>
+    <!-- Use Inter font from Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div class="container bg-white shadow-xl rounded-lg mt-10">
+
+        <!-- Header -->
+        <header class="p-6 border-b border-gray-200">
+            <h1 class="text-3xl font-bold text-gray-900">Timetable Generator</h1>
+            <p class="text-lg text-gray-600 mt-2">A simple tool to configure, create, and export class timetables.</p>
+        </header>
+
+        <!-- Wizard Steps -->
+        <div class="p-6">
+            <div id="step-1" class="wizard-step active">
+                <h2 class="text-2xl font-semibold mb-6">Step 1: Configuration & Data Input</h2>
+                <form id="config-form" class="space-y-6">
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <!-- Institutional Details -->
+                        <div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                            <h3 class="text-xl font-medium mb-4 text-gray-700">Institutional Details</h3>
+                            <div>
+                                <label for="instituteName" class="block text-sm font-medium text-gray-700">Institute Name</label>
+                                <input type="text" id="instituteName" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2" value="My College/University">
+                            </div>
+                            <div>
+                                <label for="className" class="block text-sm font-medium text-gray-700 mt-4">Batch / Class Name</label>
+                                <input type="text" id="className" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2" value="III B. TECH. (V SEMESTER)">
+                            </div>
+                            <div>
+                                <label for="sessionYear" class="block text-sm font-medium text-gray-700 mt-4">Session / Year</label>
+                                <input type="text" id="sessionYear" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2" value="SESSION 2025-26">
+                            </div>
+                        </div>
+
+                        <!-- Time Period Definition -->
+                        <div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                            <h3 class="text-xl font-medium mb-4 text-gray-700">Time Period Definition</h3>
+                            <div>
+                                <label for="firstPeriodStart" class="block text-sm font-medium text-gray-700">First Period Start Time</label>
+                                <input type="time" id="firstPeriodStart" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2" value="09:00">
+                            </div>
+                            <div>
+                                <label for="periodDuration" class="block text-sm font-medium text-gray-700 mt-4">Period Duration (minutes)</label>
+                                <input type="number" id="periodDuration" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2" value="50">
+                            </div>
+                            <div>
+                                <label for="periodsBeforeLunch" class="block text-sm font-medium text-gray-700 mt-4">Periods before Lunch</label>
+                                <input type="number" id="periodsBeforeLunch" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2" value="4">
+                            </div>
+                            <div>
+                                <label for="lunchStart" class="block text-sm font-medium text-gray-700 mt-4">Lunch Start Time</label>
+                                <input type="time" id="lunchStart" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2" value="13:00">
+                            </div>
+                            <div>
+                                <label for="lunchEnd" class="block text-sm font-medium text-gray-700 mt-4">Lunch End Time</label>
+                                <input type="time" id="lunchEnd" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2" value="14:00">
+                            </div>
+                            <div>
+                                <label for="periodsAfterLunch" class="block text-sm font-medium text-gray-700 mt-4">Periods after Lunch</label>
+                                <input type="number" id="periodsAfterLunch" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2" value="3">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Core Data Upload -->
+                    <div class="grid md:grid-cols-4 gap-6 mt-6">
+                        <div>
+                            <label for="facultyData" class="block text-sm font-medium text-gray-700">Faculty Details (CODE: Full Name)</label>
+                            <textarea id="facultyData" rows="6" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2">CS: Computer Science Teacher
+MATH: Mathematics Teacher
+PHY: Physics Teacher
+CHEM: Chemistry Teacher
+ENG: English Teacher</textarea>
+                        </div>
+                        <div>
+                            <label for="subjectData" class="block text-sm font-medium text-gray-700">Subject Details (CODE: Subject Name)</label>
+                            <textarea id="subjectData" rows="6" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2">CS-101: Data Structures
+MATH-202: Linear Algebra
+PHY-303: Quantum Mechanics
+ENG-101: Communication Skills</textarea>
+                        </div>
+                         <div>
+                            <label for="labData" class="block text-sm font-medium text-gray-700">Lab Subjects (CODE: Lab Name)</label>
+                            <textarea id="labData" rows="6" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2">CS-LAB: Computer Lab
+PHY-LAB: Physics Lab</textarea>
+                        </div>
+                        <div>
+                            <label for="roomData" class="block text-sm font-medium text-gray-700">Room Details (CODE: Room Name)</label>
+                            <textarea id="roomData" rows="6" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2">CR-101: Classroom 101
+CR-102: Classroom 102
+LAB-1: Computer Lab 1
+LAB-2: Physics Lab 2</textarea>
+                        </div>
+                    </div>
+                    <div>
+                        <label for="studentGroupData" class="block text-sm font-medium text-gray-700 mt-4">Student Groups (one per line)</label>
+                        <textarea id="studentGroupData" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2">SEC-A
+SEC-B
+SEC-C</textarea>
+                    </div>
+                    
+                    <div class="flex justify-end mt-8">
+                        <button type="button" id="next-step-1" class="px-6 py-3 bg-indigo-600 text-white font-medium rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            Generate Timetable
+                        </button>
+                    </div>
+                </form>
+            </div>
+    
+            <div id="step-2" class="wizard-step">
+                <h2 class="text-2xl font-semibold mb-6">Step 2: Timetable Generation & Editing</h2>
+                <div id="notification-message" class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded-md relative mb-4 hidden" role="alert">
+                    <span class="block sm:inline" id="notification-text"></span>
+                </div>
+                 <div id="clash-message" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md relative mb-4 hidden" role="alert">
+                    <strong class="font-bold">Clash Detected!</strong>
+                    <span class="block sm:inline" id="clash-text"></span>
+                </div>
+                <div class="timetable-grid-container">
+                    <div id="timetable-grid" class="timetable-grid"></div>
+                </div>
+                <div class="flex justify-between mt-8">
+                    <button type="button" id="prev-step-2" class="px-6 py-3 bg-gray-200 text-gray-800 font-medium rounded-md shadow-sm hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400">
+                        Back
+                    </button>
+                     <button type="button" id="generate-new-timetable" class="px-6 py-3 bg-purple-600 text-white font-medium rounded-md shadow-sm hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">
+                        Generate New Timetable
+                    </button>
+                    <button type="button" id="next-step-2" class="px-6 py-3 bg-indigo-600 text-white font-medium rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        Preview & Export
+                    </button>
+                </div>
+            </div>
+    
+            <div id="step-3" class="wizard-step">
+                <h2 class="text-2xl font-semibold mb-6">Step 3: Preview & PDF Export</h2>
+                <div id="pdf-content" class="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <div class="text-center mb-6">
+                        <h3 id="preview-institute-name" class="text-2xl font-bold"></h3>
+                        <p id="preview-class-name" class="text-xl mt-1"></p>
+                        <p id="preview-session-year" class="text-md text-gray-600 mt-1"></p>
+                    </div>
+                    <div class="timetable-grid-container">
+                        <div id="preview-grid" class="timetable-grid"></div>
+                    </div>
+                </div>
+                <div class="flex justify-between mt-8">
+                    <button type="button" id="prev-step-3" class="px-6 py-3 bg-gray-200 text-gray-800 font-medium rounded-md shadow-sm hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400">
+                        Back
+                    </button>
+                    <button type="button" id="download-pdf" class="px-6 py-3 bg-green-600 text-white font-medium rounded-md shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                        Download as PDF
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Class Allotment Modal -->
+    <div id="allotment-modal" class="modal fixed inset-0 z-50 items-center justify-center p-4">
+        <div class="bg-white rounded-lg p-6 shadow-xl w-full max-w-lg">
+            <h3 class="text-xl font-bold mb-4">Add Class</h3>
+            <form id="allotment-form" class="space-y-4">
+                <div>
+                    <label for="studentGroup" class="block text-sm font-medium text-gray-700">Student Group/Section</label>
+                    <input type="text" id="studentGroup" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2" required>
+                </div>
+                <div>
+                    <label for="subjectSelect" class="block text-sm font-medium text-gray-700">Subject</label>
+                    <select id="subjectSelect" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2" required></select>
+                </div>
+                <div>
+                    <label for="facultySelect" class="block text-sm font-medium text-gray-700">Faculty</label>
+                    <select id="facultySelect" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2" required></select>
+                </div>
+                <div>
+                    <label for="roomSelect" class="block text-sm font-medium text-gray-700">Room</label>
+                    <select id="roomSelect" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2" required></select>
+                </div>
+                <div class="flex justify-end space-x-4">
+                    <button type="button" id="cancel-allotment" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Add Class</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        window.jsPDF = window.jspdf.jsPDF;
+
+        // Global state object
+        const state = {
+            step: 1,
+            config: {},
+            data: {
+                faculty: [],
+                subjects: [],
+                labs: [],
+                rooms: [],
+                studentGroups: []
+            },
+            timeSlots: [],
+            timetable: {},
+            notificationMessage: document.getElementById('notification-message'),
+            notificationText: document.getElementById('notification-text'),
+            clashMessage: document.getElementById('clash-message'),
+            clashText: document.getElementById('clash-text'),
+            modal: document.getElementById('allotment-modal'),
+            modalFormData: {},
+            days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+        };
+
+        // Helper function to parse textarea data
+        function parseData(text) {
+            return text.split('\n').filter(line => line.trim() !== '').map(line => {
+                const [code, name] = line.split(':').map(s => s.trim());
+                return { code, name };
+            });
+        }
+         // Helper function to parse simple list data
+        function parseList(text) {
+            return text.split('\n').map(s => s.trim()).filter(s => s !== '');
+        }
+
+        // Helper function to format time
+        function formatTime(date) {
+            let hours = date.getHours();
+            let minutes = date.getMinutes();
+            let ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12; // the hour '0' should be '12'
+            minutes = minutes < 10 ? '0' + minutes : minutes;
+            return hours + ':' + minutes + ' ' + ampm;
+        }
+
+        // --- Step 1 Logic ---
+        function handleStep1Next() {
+            state.config = {
+                instituteName: document.getElementById('instituteName').value,
+                className: document.getElementById('className').value,
+                sessionYear: document.getElementById('sessionYear').value,
+                firstPeriodStart: document.getElementById('firstPeriodStart').value,
+                periodDuration: parseInt(document.getElementById('periodDuration').value),
+                periodsBeforeLunch: parseInt(document.getElementById('periodsBeforeLunch').value),
+                lunchStart: document.getElementById('lunchStart').value,
+                lunchEnd: document.getElementById('lunchEnd').value,
+                periodsAfterLunch: parseInt(document.getElementById('periodsAfterLunch').value)
+            };
+
+            state.data.faculty = parseData(document.getElementById('facultyData').value);
+            state.data.subjects = parseData(document.getElementById('subjectData').value);
+            state.data.labs = parseData(document.getElementById('labData').value);
+            state.data.rooms = parseData(document.getElementById('roomData').value);
+            state.data.studentGroups = parseList(document.getElementById('studentGroupData').value);
+
+            // Generate time slots
+            const firstPeriodTime = new Date(`2000-01-01T${state.config.firstPeriodStart}`);
+            const periodDuration = state.config.periodDuration;
+            const periodsBefore = state.config.periodsBeforeLunch;
+            const lunchStart = new Date(`2000-01-01T${state.config.lunchStart}`);
+            const lunchEnd = new Date(`2000-01-01T${state.config.lunchEnd}`);
+            const periodsAfter = state.config.periodsAfterLunch;
+
+            state.timeSlots = [];
+            let currentTime = firstPeriodTime;
+            for (let i = 0; i < periodsBefore; i++) {
+                let endTime = new Date(currentTime.getTime() + periodDuration * 60000);
+                state.timeSlots.push({
+                    start: formatTime(currentTime),
+                    end: formatTime(endTime),
+                    type: 'class'
+                });
+                currentTime = endTime;
+            }
+            state.timeSlots.push({
+                start: formatTime(lunchStart),
+                end: formatTime(lunchEnd),
+                type: 'lunch'
+            });
+            currentTime = lunchEnd;
+            for (let i = 0; i < periodsAfter; i++) {
+                let endTime = new Date(currentTime.getTime() + periodDuration * 60000);
+                state.timeSlots.push({
+                    start: formatTime(currentTime),
+                    end: formatTime(endTime),
+                    type: 'class'
+                });
+                currentTime = endTime;
+            }
+            
+            generateTimetable();
+            state.step = 2;
+            render();
+        }
+
+        // --- Automatic Generation Logic ---
+        function generateTimetable() {
+            state.timetable = {};
+            const teacherLoads = {};
+            state.data.faculty.forEach(f => teacherLoads[f.code] = 0);
+            
+            const allSubjects = state.data.subjects.concat(state.data.labs);
+            const allClassSlots = [];
+            state.days.forEach(day => {
+                state.timeSlots.forEach((slot, colIndex) => {
+                    if (slot.type === 'class') {
+                        allClassSlots.push({ day, colIndex });
+                    }
+                });
+            });
+
+            // Shuffle available subjects, groups, rooms, and slots for some randomness
+            const shuffledSubjects = [...allSubjects].sort(() => Math.random() - 0.5);
+            const shuffledGroups = [...state.data.studentGroups].sort(() => Math.random() - 0.5);
+            const shuffledRooms = [...state.data.rooms].sort(() => Math.random() - 0.5);
+            const shuffledTeachers = [...state.data.faculty].sort(() => Math.random() - 0.5);
+            
+            // Initialize timetable
+            state.days.forEach(day => state.timetable[day] = Array(state.timeSlots.length).fill(null));
+
+            // Greedily fill the timetable
+            for (const group of shuffledGroups) {
+                const groupSubjectsUsedPerDay = {};
+                state.days.forEach(day => groupSubjectsUsedPerDay[day] = new Set());
+                
+                const availableSlotsForGroup = [...allClassSlots].sort(() => Math.random() - 0.5);
+                
+                for (const slot of availableSlotsForGroup) {
+                    const { day, colIndex } = slot;
+                    
+                    if (state.timetable[day][colIndex] !== null) continue; // Slot is already taken
+
+                    let assigned = false;
+                    for (const subject of shuffledSubjects) {
+                        if (groupSubjectsUsedPerDay[day].has(subject.code)) continue;
+
+                        for (const teacher of shuffledTeachers) {
+                            // Check teacher's weekly load
+                            const isLab = state.data.labs.some(lab => lab.code === subject.code);
+                            if (!isLab && teacherLoads[teacher.code] >= 4) continue;
+
+                            for (const room of shuffledRooms) {
+                                const newClass = {
+                                    studentGroup: group,
+                                    subject,
+                                    faculty: teacher,
+                                    room
+                                };
+
+                                const clash = checkClash(day, colIndex, newClass);
+                                if (!clash) {
+                                    state.timetable[day][colIndex] = newClass;
+                                    groupSubjectsUsedPerDay[day].add(subject.code);
+                                    if (!isLab) teacherLoads[teacher.code]++;
+                                    assigned = true;
+                                    break;
+                                }
+                            }
+                            if (assigned) break;
+                        }
+                        if (assigned) break;
+                    }
+                }
+            }
+
+            state.notificationText.textContent = "Timetable generated! You can now edit it manually.";
+            state.notificationMessage.classList.remove('hidden');
+        }
+
+
+        // --- Timetable Rendering Logic (for both Step 2 and 3) ---
+        function renderTimetableGrid(isEditable) {
+            const gridId = isEditable ? 'timetable-grid' : 'preview-grid';
+            const grid = document.getElementById(gridId);
+            grid.innerHTML = '';
+            grid.style.gridTemplateColumns = `repeat(${state.timeSlots.length + 1}, auto)`;
+
+            // Header row
+            const headerRow = document.createElement('div');
+            headerRow.className = 'contents';
+            headerRow.innerHTML = `<div class="bg-gray-200 font-bold p-2 text-center border border-gray-300">Days/Time</div>`;
+            state.timeSlots.forEach(slot => {
+                const headerCell = document.createElement('div');
+                headerCell.className = 'bg-gray-200 font-bold p-2 text-center border border-gray-300';
+                headerCell.innerHTML = `<div>${slot.start}</div><div>-</div><div>${slot.end}</div>`;
+                grid.appendChild(headerCell);
+            });
+            grid.appendChild(headerRow);
+
+            // Body rows (Days)
+            state.days.forEach(day => {
+                const dayRow = document.createElement('div');
+                dayRow.className = 'contents';
+                const dayHeader = document.createElement('div');
+                dayHeader.className = 'bg-gray-200 font-bold p-2 text-center border border-gray-300 flex items-center justify-center';
+                dayHeader.textContent = day;
+                grid.appendChild(dayHeader);
+
+                state.timeSlots.forEach((slot, colIndex) => {
+                    const cell = document.createElement('div');
+                    cell.className = `p-2 border border-gray-300 relative`;
+                    
+                    if (slot.type === 'lunch') {
+                        cell.classList.add('lunch-cell');
+                        cell.innerHTML = `LUNCH`;
+                    } else {
+                        const classDetails = state.timetable[day][colIndex];
+                        cell.classList.add('timetable-cell');
+                        cell.dataset.day = day;
+                        cell.dataset.colIndex = colIndex;
+
+                        if (classDetails) {
+                            cell.classList.remove('timetable-cell');
+                            cell.classList.add('timetable-cell-filled');
+                            cell.innerHTML = `
+                                <div class="text-xxs font-semibold">${classDetails.subject.name}</div>
+                                <div class="text-xxs text-gray-600 mt-1">${classDetails.faculty.name}</div>
+                                <div class="text-xxs text-gray-600">${classDetails.room.code}</div>
+                                <div class="text-xxs text-gray-500">${classDetails.studentGroup}</div>
+                                <button class="absolute top-1 right-1 text-red-500 hover:text-red-700 text-sm leading-none" onclick="clearClass('${day}', ${colIndex})">
+                                    &times;
+                                </button>
+                            `;
+                        } else {
+                            cell.innerHTML = `<span class="text-gray-400">Add Class</span>`;
+                        }
+                        
+                        if (isEditable) {
+                           cell.addEventListener('click', () => openModal(day, colIndex));
+                        }
+                    }
+                    grid.appendChild(cell);
+                });
+            });
+        }
+
+        // --- Clash Detection Logic ---
+        function checkClash(day, colIndex, newClass) {
+            let clash = null;
+            state.days.forEach((d, dIndex) => {
+                state.timeSlots.forEach((slot, cIndex) => {
+                    if (state.timetable[d][cIndex] === null) return;
+                    
+                    // We only check against existing entries, not against the current cell
+                    const existingClass = state.timetable[d][cIndex];
+                    
+                    // Faculty Clash (same faculty, same time slot, any day)
+                    if (existingClass.faculty.code === newClass.faculty.code && d === day && cIndex === colIndex) {
+                        clash = `Faculty clash: ${newClass.faculty.name} is already scheduled on ${d} at this time.`;
+                    }
+                    // Room Clash (same room, same time slot, any day)
+                    if (existingClass.room.code === newClass.room.code && d === day && cIndex === colIndex) {
+                        clash = `Room clash: ${newClass.room.name} is already occupied on ${d} at this time.`;
+                    }
+                    // Student Group Clash (same student group, same time slot, any day)
+                    if (existingClass.studentGroup === newClass.studentGroup && d === day && cIndex === colIndex) {
+                        clash = `Student Group clash: ${newClass.studentGroup} is already scheduled on ${d} at this time.`;
+                    }
+                });
+            });
+            return clash;
+        }
+
+        // --- Modal Logic ---
+        function openModal(day, colIndex) {
+            state.modalFormData = { day, colIndex };
+            state.modal.classList.add('active');
+            state.clashMessage.classList.add('hidden');
+
+            const subjectSelect = document.getElementById('subjectSelect');
+            const facultySelect = document.getElementById('facultySelect');
+            const roomSelect = document.getElementById('roomSelect');
+            const studentGroupInput = document.getElementById('studentGroup');
+
+            // Populate dropdowns with a combined list of subjects and labs
+            const allSubjects = state.data.subjects.concat(state.data.labs);
+            subjectSelect.innerHTML = '<option value="">Select Subject</option>' + allSubjects.map(s => `<option value="${s.code}">${s.code}: ${s.name}</option>`).join('');
+            facultySelect.innerHTML = '<option value="">Select Faculty</option>' + state.data.faculty.map(f => `<option value="${f.code}">${f.code}: ${f.name}</option>`).join('');
+            roomSelect.innerHTML = '<option value="">Select Room</option>' + state.data.rooms.map(r => `<option value="${r.code}">${r.code}: ${r.name}</option>`).join('');
+            
+            // Populate student group input as a dropdown for manual editing
+            studentGroupInput.value = state.data.studentGroups[0] || '';
+            const studentGroupOptions = state.data.studentGroups.map(group => `<option value="${group}">${group}</option>`).join('');
+            studentGroupInput.outerHTML = `<select id="studentGroup" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2" required>${studentGroupOptions}</select>`;
+        }
+
+        function closeModal() {
+            state.modal.classList.remove('active');
+            state.clashMessage.classList.add('hidden');
+        }
+        
+        // Form submission handler
+        document.getElementById('allotment-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            
+            const selectedSubject = state.data.subjects.concat(state.data.labs).find(s => s.code === document.getElementById('subjectSelect').value);
+            const selectedFaculty = state.data.faculty.find(f => f.code === document.getElementById('facultySelect').value);
+            const selectedRoom = state.data.rooms.find(r => r.code === document.getElementById('roomSelect').value);
+            const selectedGroup = document.getElementById('studentGroup').value;
+
+            const newClass = {
+                studentGroup: selectedGroup,
+                subject: selectedSubject,
+                faculty: selectedFaculty,
+                room: selectedRoom
+            };
+            
+            const clash = checkClash(state.modalFormData.day, state.modalFormData.colIndex, newClass);
+            if (clash) {
+                state.clashText.textContent = clash;
+                state.clashMessage.classList.remove('hidden');
+            } else {
+                state.timetable[state.modalFormData.day][state.modalFormData.colIndex] = newClass;
+                renderTimetableGrid(true);
+                closeModal();
+            }
+        });
+
+        // Clear button handler
+        function clearClass(day, colIndex) {
+            state.timetable[day][colIndex] = null;
+            renderTimetableGrid(true);
+        }
+
+        // --- PDF Export Logic ---
+        function renderPreview() {
+            document.getElementById('preview-institute-name').textContent = state.config.instituteName;
+            document.getElementById('preview-class-name').textContent = state.config.className;
+            document.getElementById('preview-session-year').textContent = state.config.sessionYear;
+
+            renderTimetableGrid(false); // Render non-editable preview
+        }
+
+        function downloadPDF() {
+            const element = document.getElementById('pdf-content');
+            html2canvas(element, { scale: 2 }).then(canvas => {
+                const imgData = canvas.toDataURL('image/png');
+                const pdf = new jsPDF({
+                    orientation: 'landscape',
+                    unit: 'px',
+                    format: [canvas.width, canvas.height]
+                });
+                pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+                pdf.save("timetable.pdf");
+            });
+        }
+
+        // --- Main rendering logic ---
+        function render() {
+            document.querySelectorAll('.wizard-step').forEach(step => step.classList.remove('active'));
+            document.getElementById(`step-${state.step}`).classList.add('active');
+            state.modal.classList.remove('active');
+            
+            if (state.step === 2) {
+                renderTimetableGrid(true); // Render editable grid
+            } else if (state.step === 3) {
+                renderPreview();
+            }
+        }
+
+        // --- Event Listeners ---
+        document.getElementById('next-step-1').addEventListener('click', handleStep1Next);
+        document.getElementById('generate-new-timetable').addEventListener('click', generateTimetable);
+        document.getElementById('prev-step-2').addEventListener('click', () => { state.step = 1; render(); });
+        document.getElementById('next-step-2').addEventListener('click', () => { state.step = 3; render(); });
+        document.getElementById('prev-step-3').addEventListener('click', () => { state.step = 2; render(); });
+        document.getElementById('download-pdf').addEventListener('click', downloadPDF);
+        document.getElementById('cancel-allotment').addEventListener('click', closeModal);
+
+        // Initial render
+        render();
+
+    </script>
+</body>
+</html>
